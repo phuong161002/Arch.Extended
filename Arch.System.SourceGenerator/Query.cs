@@ -407,7 +407,11 @@ public static class QueryUtils
                               _{{queryMethod.MethodName}}_Initialized = world;
                           }
                           
-                          var job = new {{queryMethod.MethodName}}QueryJobChunk() { {{jobParametersAssigment}}{{(queryMethod.IsStatic? "" : ", system = this")}} };
+                          var job = new {{queryMethod.MethodName}}QueryJobChunk() 
+                          { 
+                               {{(queryMethod.IsStatic? "" : "system = this,")}}
+                               {{jobParametersAssigment}}
+                          };
                           world.InlineParallelChunkQuery(in {{queryMethod.MethodName}}_QueryDescription, job);
                       }
                       
