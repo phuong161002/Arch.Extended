@@ -16,19 +16,23 @@ namespace Arch.Extended;
 /// </summary>
 public partial class MovementSystem : BaseSystem<World, GameTime>
 {
-    
     /// <summary>
     ///     A rectangle which specifies the viewport.
     ///     Needed so that the entities do not wander outside the viewport.
     /// </summary>
     private readonly Rectangle _viewport;
-    
+
+    private object _lock = new();
+
     /// <summary>
     ///     Creates a <see cref="MovementSystem"/> instance.
     /// </summary>
     /// <param name="world">The <see cref="World"/> used.</param>
     /// <param name="viewport">The games <see cref="Viewport"/>.</param>
-    public MovementSystem(World world, Rectangle viewport) : base(world) { _viewport = viewport;}
+    public MovementSystem(World world, Rectangle viewport) : base(world)
+    {
+        _viewport = viewport;
+    }
 
     /// <summary>
     ///     Called for each <see cref="Entity"/> to move it.
@@ -41,9 +45,12 @@ public partial class MovementSystem : BaseSystem<World, GameTime>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Move([Data] GameTime time, ref Position pos, ref Velocity vel)
     {
-        pos.Vector2 += time.ElapsedGameTime.Milliseconds * vel.Vector2;
+        // lock (_lock)
+        {
+            // pos.Vector2 += time.ElapsedGameTime.Milliseconds * vel.Vector2;
+        }
     }
-    
+
     /// <summary>
     ///     Called for each <see cref="Entity"/> to move it.
     ///     The calling takes place through the source generated method "MoveQuery" on <see cref="BaseSystem{W,T}.Update"/>.
@@ -56,13 +63,13 @@ public partial class MovementSystem : BaseSystem<World, GameTime>
     {
         if (pos.Vector2.X >= _viewport.X + _viewport.Width)
             vel.Vector2.X = -vel.Vector2.X;
-            
+
         if (pos.Vector2.Y >= _viewport.Y + _viewport.Height)
             vel.Vector2.Y = -vel.Vector2.Y;
-            
+
         if (pos.Vector2.X <= _viewport.X)
             vel.Vector2.X = -vel.Vector2.X;
-            
+
         if (pos.Vector2.Y <= _viewport.Y)
             vel.Vector2.Y = -vel.Vector2.Y;
     }
@@ -77,7 +84,9 @@ public partial class ColorSystem : BaseSystem<World, GameTime>
     ///     Creates an <see cref="ColorSystem"/> instance.
     /// </summary>
     /// <param name="world"></param>
-    public ColorSystem(World world) : base(world) {}
+    public ColorSystem(World world) : base(world)
+    {
+    }
 
     /// <summary>
     ///     Called for each <see cref="Entity"/> to change its color.
@@ -104,13 +113,16 @@ public partial class DrawSystem : BaseSystem<World, GameTime>
     ///     The <see cref="SpriteBatch"/> used for drawing all <see cref="Entity"/>s.
     /// </summary>
     private readonly SpriteBatch _batch;
-    
+
     /// <summary>
     ///     Creates a <see cref="DrawSystem"/> instance.
     /// </summary>
     /// <param name="world">The <see cref="World"/> used.</param>
     /// <param name="batch">The <see cref="SpriteBatch"/> used.</param>
-    public DrawSystem(World world, SpriteBatch batch) : base(world) { _batch = batch;}
+    public DrawSystem(World world, SpriteBatch batch) : base(world)
+    {
+        _batch = batch;
+    }
 
     /// <summary>
     ///     Is called before the <see cref="BaseSystem{W,T}.Update"/> to start with the <see cref="SpriteBatch"/> recording.
@@ -132,7 +144,7 @@ public partial class DrawSystem : BaseSystem<World, GameTime>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Draw(ref Position position, ref Sprite sprite)
     {
-        _batch.Draw(sprite.Texture2D, position.Vector2, sprite.Color);  // Draw
+        _batch.Draw(sprite.Texture2D, position.Vector2, sprite.Color); // Draw
     }
 
     /// <summary>
@@ -154,7 +166,8 @@ public partial class DebugSystem : BaseSystem<World, GameTime>
     /// <summary>
     ///     A custom <see cref="QueryDescription"/> which targets <see cref="Entity"/>s with <see cref="Position"/> and <see cref="Sprite"/> without <see cref="Velocity"/>.
     /// </summary>
-    private readonly QueryDescription _customQuery = new QueryDescription().WithAll<Position, Sprite>().WithNone<Velocity>();
+    private readonly QueryDescription _customQuery =
+        new QueryDescription().WithAll<Position, Sprite>().WithNone<Velocity>();
 
     /// <summary>
     ///     Creates a new <see cref="DebugSystem"/> instance. 
@@ -171,8 +184,9 @@ public partial class DebugSystem : BaseSystem<World, GameTime>
     /// <param name="t">The <see cref="GameTime"/>.</param>
     public override void Update(in GameTime t)
     {
-        World.Query(in _customQuery, entity => Console.WriteLine($"Custom : {entity}"));  // Manual query
-        PrintEntitiesWithoutVelocityQuery(World);  // Call source generated query, which calls the PrintEntitiesWithoutVelocity method
+        World.Query(in _customQuery, entity => Console.WriteLine($"Custom : {entity}")); // Manual query
+        PrintEntitiesWithoutVelocityQuery(
+            World); // Call source generated query, which calls the PrintEntitiesWithoutVelocity method
     }
 
     /// <summary>
@@ -206,7 +220,6 @@ public partial class DebugSystem : BaseSystem<World, GameTime>
 /// </summary>
 public static partial class EventHandler
 {
-
     /// <summary>
     /// Listens for <see cref="ValueTuple{T1,T2}"/> events with a <see cref="World"/> and <see cref="KeyboardState"/> to check if the delte key was pressed.
     /// If thats the case, it will remove the <see cref="Velocity"/> component from all of them. 
@@ -217,7 +230,7 @@ public static partial class EventHandler
     public static void OnDeleteStopEntities(ref (World world, KeyboardState state) tuple)
     {
         if (!tuple.state.IsKeyDown(Keys.Delete)) return;
-        
+
         // Query for velocity entities and remove their velocity to make them stop moving. 
         var queryDesc = new QueryDescription().WithAll<Velocity>();
         tuple.world.Query(in queryDesc, entity => entity.Remove<Velocity>());
